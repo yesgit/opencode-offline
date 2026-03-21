@@ -122,6 +122,22 @@ async function initialize() {
   logger.log("spawning sidecar", { url })
   const { child, health, events } = spawnLocalServer(hostname, port, password)
   sidecar = child
+  const failed = new Promise<never>((_, reject) => {
+    events.on("error", (value: string) => {
+      logger.error("sidecar error", { value })
+      reject(new Error(`Sidecar error: ${value}`))
+    })
+    events.on("terminated", (value: { code: number | null; signal: number | null }) => {
+      logger.error("sidecar terminated", value)
+      reject(new Error(`Sidecar terminated (code=${value.code ?? "unknown"} signal=${value.signal ?? "unknown"})`))
+    })
+  })
+  events.on("stdout", (value: string) => {
+    logger.log("sidecar stdout", { value: value.trim() })
+  })
+  events.on("stderr", (value: string) => {
+    logger.log("sidecar stderr", { value: value.trim() })
+  })
   serverReady.resolve({
     url,
     username: "opencode",
@@ -139,11 +155,18 @@ async function initialize() {
     })
 
     if (needsMigration) {
-      await sqliteDone?.promise
+      await Promise.race([
+        sqliteDone!.promise,
+        failed,
+        delay(30_000).then(() => {
+          throw new Error("SQLite migration timed out")
+        }),
+      ])
     }
 
     await Promise.race([
       health.wait,
+      failed,
       delay(30_000).then(() => {
         throw new Error("Sidecar health check timed out")
       }),
