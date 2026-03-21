@@ -148,7 +148,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: opencode-electron-${{ matrix.settings.target }}
-          path: packages/desktop-electron/dist/*
+          path: |
+            packages/desktop-electron/dist/*.exe
+            packages/desktop-electron/dist/*.dmg
+            packages/desktop-electron/dist/*.zip
+            packages/desktop-electron/dist/*.AppImage
+            packages/desktop-electron/dist/*.deb
+            packages/desktop-electron/dist/*.rpm
 
   release:
     if: inputs.create_release == 'true'
@@ -171,16 +177,17 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          
-          # Copy CLI binaries (exclude debug files, yml, blockmap, etc)
+
+          # Copy CLI tarballs/zips (not the raw exe, which is the internal sidecar)
           if [ -d "dist/opencode-cli" ]; then
-            find dist/opencode-cli -type f \( -name "*.exe" -o -name "opencode-cli" -o -name "*.tar.gz" \) -exec cp {} release/ \;
+            find dist/opencode-cli -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release/ \;
           fi
-          
-          # Copy Electron installers and packages (only final distributions)
-          find dist -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} release/ \;
-          
-          # Log what we're releasing
+
+          # Copy Electron installers - only top-level files, skip win-unpacked/ and mac/ dirs
+          for target_dir in dist/opencode-electron-*/; do
+            find "$target_dir" -maxdepth 1 -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} release/ \;
+          done
+
           echo "Release artifacts:"
           ls -lh release/
 
