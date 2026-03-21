@@ -135,7 +135,14 @@ export function spawnCommand(args: string, extraEnv: Record<string, string>) {
     Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
   )
   const envs = {
+    // Offline defaults — user's own env vars (spread in base below) take precedence
+    OPENCODE_DISABLE_MODELS_FETCH: "1",
+    OPENCODE_DISABLE_LSP_DOWNLOAD: "1",
+    OPENCODE_DISABLE_AUTOUPDATE: "1",
+    OPENCODE_DISABLE_RIPGREP_DOWNLOAD: "1",
+    OPENCODE_DISABLE_SHARE: "1",
     ...base,
+    // Desktop-mandatory flags (always set regardless of user's env)
     OPENCODE_EXPERIMENTAL_ICON_DISCOVERY: "true",
     OPENCODE_EXPERIMENTAL_FILEWATCHER: "true",
     OPENCODE_CLIENT: "desktop",

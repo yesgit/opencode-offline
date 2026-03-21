@@ -2,4 +2,5 @@ research
 dist
 gen
 app.log
-src/provider/models-snapshot.ts
+# models-snapshot.ts is tracked in this fork for offline support
+# src/provider/models-snapshot.ts
