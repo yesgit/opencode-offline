@@ -56,7 +56,6 @@ const getBase = (): Configuration => ({
   win: {
     icon: `resources/icons/icon.ico`,
     target: ["nsis"],
-    sign: false, // Disable blockmap generation
   },
   nsis: {
     oneClick: false,
