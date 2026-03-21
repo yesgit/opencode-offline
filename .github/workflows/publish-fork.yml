@@ -1,7 +1,7 @@
-name: public-fork
+name: publish-fork
 # Preferred fork workflow.
 # Closely follows the upstream publish structure while staying runnable on public forks.
-run-name: public-fork ${{ inputs.channel }}
+run-name: publish-fork ${{ inputs.channel }}
 
 on:
   workflow_dispatch:

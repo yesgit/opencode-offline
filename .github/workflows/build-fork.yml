@@ -1,5 +1,5 @@
 name: build (fork, deprecated)
-# Deprecated: prefer public-fork.yml for fork builds.
+# Deprecated: prefer publish-fork.yml for fork builds.
 # Simplified build workflow for fork repos.
 # Does NOT require any external secrets or paid runners.
 # Produces Electron installers as GitHub Actions artifacts.
