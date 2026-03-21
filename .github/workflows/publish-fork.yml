@@ -18,8 +18,19 @@ on:
       electron:
         description: Build Electron desktop artifacts
         required: false
-        type: boolean
-        default: true
+        type: choice
+        options:
+          - "true"
+          - "false"
+        default: "true"
+      create_release:
+        description: Create GitHub Release and upload artifacts
+        required: false
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.channel }}
 
@@ -34,6 +45,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Compute version
         id: version
@@ -41,6 +53,7 @@ jobs:
         run: |
           echo "channel=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
           echo "version=0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "tag=v0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
 
   build-cli:
     needs: version
@@ -64,7 +77,7 @@ jobs:
           path: packages/opencode/dist
 
   build-electron:
-    if: inputs.electron
+    if: inputs.electron == 'true'
     needs:
       - version
       - build-cli
@@ -136,3 +149,47 @@ jobs:
         with:
           name: opencode-electron-${{ matrix.settings.target }}
           path: packages/desktop-electron/dist/*
+
+  release:
+    if: inputs.create_release == 'true'
+    needs:
+      - version
+      - build-cli
+      - build-electron
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: opencode-*
+          path: dist
+          merge-multiple: false
+
+      - name: Prepare release artifacts
+        shell: bash
+        run: |
+          mkdir -p release
+          
+          # Copy CLI binaries (exclude debug files, yml, blockmap, etc)
+          if [ -d "dist/opencode-cli" ]; then
+            find dist/opencode-cli -type f \( -name "*.exe" -o -name "opencode-cli" -o -name "*.tar.gz" \) -exec cp {} release/ \;
+          fi
+          
+          # Copy Electron installers and packages (only final distributions)
+          find dist -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} release/ \;
+          
+          # Log what we're releasing
+          echo "Release artifacts:"
+          ls -lh release/
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: OpenCode Offline ${{ needs.version.outputs.version }}
+          draft: false
+          prerelease: ${{ needs.version.outputs.channel != 'prod' }}
+          generate_release_notes: true
+          files: release/*
