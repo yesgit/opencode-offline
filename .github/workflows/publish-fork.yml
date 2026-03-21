@@ -1,0 +1,138 @@
+name: publish-fork
+# Preferred fork workflow.
+# Closely follows the upstream publish structure while staying runnable on public forks.
+run-name: publish-fork ${{ inputs.channel }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: App channel
+        required: false
+        type: choice
+        options:
+          - dev
+          - beta
+          - prod
+        default: prod
+      electron:
+        description: Build Electron desktop artifacts
+        required: false
+        type: boolean
+        default: true
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.channel }}
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
+    steps:
+      - name: Compute version
+        id: version
+        shell: bash
+        run: |
+          echo "channel=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
+          echo "version=0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+  build-cli:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Build CLI
+        run: ./packages/opencode/script/build.ts
+        env:
+          OPENCODE_CHANNEL: ${{ needs.version.outputs.channel }}
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/opencode/dist
+
+  build-electron:
+    if: inputs.electron
+    needs:
+      - version
+      - build-cli
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            platform_flag: --mac --x64
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            platform_flag: --mac --arm64
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            platform_flag: --win
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            platform_flag: --linux
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-bun
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dependencies (ubuntu only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Prepare
+        run: bun ./scripts/prepare.ts
+        working-directory: packages/desktop-electron
+        env:
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          OPENCODE_CHANNEL: ${{ needs.version.outputs.channel }}
+          RUST_TARGET: ${{ matrix.settings.target }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          OPENCODE_BRAND_SUFFIX: Offline
+          OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
+
+      - name: Build
+        run: bun run build
+        working-directory: packages/desktop-electron
+        env:
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          OPENCODE_CHANNEL: ${{ needs.version.outputs.channel }}
+          OPENCODE_BRAND_SUFFIX: Offline
+          OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
+
+      - name: Package
+        run: npx electron-builder ${{ matrix.settings.platform_flag }} --publish never --config electron-builder.config.ts
+        working-directory: packages/desktop-electron
+        timeout-minutes: 60
+        env:
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          OPENCODE_CHANNEL: ${{ needs.version.outputs.channel }}
+          OPENCODE_BRAND_SUFFIX: Offline
+          OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencode-electron-${{ matrix.settings.target }}
+          path: packages/desktop-electron/dist/*
