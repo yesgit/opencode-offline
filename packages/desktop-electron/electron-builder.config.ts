@@ -35,6 +35,7 @@ const getBase = (): Configuration => ({
       filter: ["index.js", "index.d.ts", "build/Release/mac_window.node", "swift-build/**"],
     },
   ],
+  publish: null, // Disable update metadata files (.yml, .json, .blockmap)
   mac: {
     category: "public.app-category.developer-tools",
     icon: `resources/icons/icon.icns`,
@@ -55,6 +56,7 @@ const getBase = (): Configuration => ({
   win: {
     icon: `resources/icons/icon.ico`,
     target: ["nsis"],
+    sign: false, // Disable blockmap generation
   },
   nsis: {
     oneClick: false,
