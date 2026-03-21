@@ -23,8 +23,19 @@ permissions:
   actions: read  # needed for gh run download
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      value: ${{ steps.version.outputs.value }}
+    steps:
+      - name: Compute version
+        id: version
+        shell: bash
+        run: echo "value=0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
   # ── Step 1: Build the opencode CLI for all platforms on Linux ─────────────
   build-cli:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +44,9 @@ jobs:
 
       - name: Build CLI (all platforms)
         run: bun run ./packages/opencode/script/build.ts
+        env:
+          OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_VERSION: ${{ needs.version.outputs.value }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -41,7 +55,9 @@ jobs:
 
   # ── Step 2: Build Electron packages per platform ──────────────────────────
   build-electron:
-    needs: build-cli
+    needs:
+      - version
+      - build-cli
     strategy:
       fail-fast: false
       matrix:
@@ -85,6 +101,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_VERSION: ${{ needs.version.outputs.value }}
           OPENCODE_BRAND_SUFFIX: Offline
           OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
 
@@ -93,6 +110,7 @@ jobs:
         working-directory: packages/desktop-electron
         env:
           OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_VERSION: ${{ needs.version.outputs.value }}
           OPENCODE_BRAND_SUFFIX: Offline
           OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
 
@@ -102,6 +120,7 @@ jobs:
         timeout-minutes: 60
         env:
           OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_VERSION: ${{ needs.version.outputs.value }}
           OPENCODE_BRAND_SUFFIX: Offline
           OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
 
