@@ -6,8 +6,18 @@ const channel = (() => {
   return "dev"
 })()
 
+const brand = (() => {
+  const raw = process.env.OPENCODE_BRAND_SUFFIX?.trim()
+  return raw ? ` ${raw}` : ""
+})()
+
+const prefix = (() => {
+  const raw = process.env.OPENCODE_ARTIFACT_PREFIX?.trim()
+  return raw || "opencode-electron"
+})()
+
 const getBase = (): Configuration => ({
-  artifactName: "opencode-electron-${os}-${arch}.${ext}",
+  artifactName: `${prefix}-\${os}-\${arch}.\${ext}`,
   directories: {
     output: "dist",
     buildResources: "resources",
@@ -67,7 +77,7 @@ function getConfig() {
       return {
         ...base,
         appId: "ai.opencode.desktop.dev",
-        productName: "OpenCode Dev",
+        productName: `OpenCode Dev${brand}`,
         rpm: { packageName: "opencode-dev" },
       }
     }
@@ -75,7 +85,7 @@ function getConfig() {
       return {
         ...base,
         appId: "ai.opencode.desktop.beta",
-        productName: "OpenCode Beta",
+        productName: `OpenCode Beta${brand}`,
         protocols: { name: "OpenCode Beta", schemes: ["opencode"] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" },
         rpm: { packageName: "opencode-beta" },
@@ -85,7 +95,7 @@ function getConfig() {
       return {
         ...base,
         appId: "ai.opencode.desktop",
-        productName: "OpenCode",
+        productName: `OpenCode${brand}`,
         protocols: { name: "OpenCode", schemes: ["opencode"] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
         rpm: { packageName: "opencode" },

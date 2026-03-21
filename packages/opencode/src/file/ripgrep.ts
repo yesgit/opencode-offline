@@ -13,6 +13,7 @@ import { text } from "node:stream/consumers"
 
 import { ZipReader, BlobReader, BlobWriter } from "@zip.js/zip.js"
 import { Log } from "@/util/log"
+import { Flag } from "../flag/flag"
 
 export namespace Ripgrep {
   const log = Log.create({ service: "ripgrep" })
@@ -127,6 +128,13 @@ export namespace Ripgrep {
     }),
   )
 
+  export const NotFoundError = NamedError.create(
+    "RipgrepNotFoundError",
+    z.object({
+      platform: z.string(),
+    }),
+  )
+
   const state = lazy(async () => {
     const system = which("rg")
     if (system) {
@@ -140,6 +148,11 @@ export namespace Ripgrep {
       const platformKey = `${process.arch}-${process.platform}` as keyof typeof PLATFORM
       const config = PLATFORM[platformKey]
       if (!config) throw new UnsupportedPlatformError({ platform: platformKey })
+
+      if (Flag.OPENCODE_DISABLE_RIPGREP_DOWNLOAD)
+        throw new NotFoundError({
+          platform: platformKey,
+        })
 
       const version = "14.1.1"
       const filename = `ripgrep-${version}-${config.platform}.${config.extension}`

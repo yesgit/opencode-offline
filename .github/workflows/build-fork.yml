@@ -1,0 +1,111 @@
+name: build (fork)
+# Simplified build workflow for fork repos.
+# Does NOT require any external secrets or paid runners.
+# Produces Electron installers as GitHub Actions artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "App channel (affects product name & app ID)"
+        required: false
+        type: choice
+        options: [dev, beta, prod]
+        default: dev
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read  # needed for gh run download
+
+jobs:
+  # ── Step 1: Build the opencode CLI for all platforms on Linux ─────────────
+  build-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Build CLI (all platforms)
+        run: bun run ./packages/opencode/script/build.ts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/opencode/dist
+
+  # ── Step 2: Build Electron packages per platform ──────────────────────────
+  build-electron:
+    needs: build-cli
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64 — NSIS installer (.exe)
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            platform_flag: --win
+
+          # macOS Apple Silicon — DMG (unsigned, requires "Open Anyway" on first run)
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            platform_flag: --mac --arm64
+
+          # Linux x64 — AppImage + deb + rpm
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            platform_flag: --linux
+
+    runs-on: ${{ matrix.host }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-bun
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Prepare (download CLI sidecar + copy icons)
+        run: bun ./scripts/prepare.ts
+        working-directory: packages/desktop-electron
+        env:
+          RUST_TARGET: ${{ matrix.target }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_BRAND_SUFFIX: Offline
+          OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
+
+      - name: Build (electron-vite)
+        run: bun run build
+        working-directory: packages/desktop-electron
+        env:
+          OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_BRAND_SUFFIX: Offline
+          OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
+
+      - name: Package (electron-builder, no publish)
+        run: npx electron-builder ${{ matrix.platform_flag }} --publish never --config electron-builder.config.ts
+        working-directory: packages/desktop-electron
+        timeout-minutes: 60
+        env:
+          OPENCODE_CHANNEL: ${{ inputs.channel }}
+          OPENCODE_BRAND_SUFFIX: Offline
+          OPENCODE_ARTIFACT_PREFIX: opencode-offline-electron
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencode-electron-${{ matrix.target }}
+          path: packages/desktop-electron/dist/*

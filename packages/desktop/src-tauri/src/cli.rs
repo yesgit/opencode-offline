@@ -388,6 +388,19 @@ pub fn spawn_command(
             state_dir.to_string_lossy().to_string(),
         ),
     ];
+    // Offline defaults: only apply when the user hasn't set the var in their own environment
+    let offline_defaults: &[(&str, &str)] = &[
+        ("OPENCODE_DISABLE_MODELS_FETCH", "1"),
+        ("OPENCODE_DISABLE_LSP_DOWNLOAD", "1"),
+        ("OPENCODE_DISABLE_AUTOUPDATE", "1"),
+        ("OPENCODE_DISABLE_RIPGREP_DOWNLOAD", "1"),
+        ("OPENCODE_DISABLE_SHARE", "1"),
+    ];
+    for &(key, val) in offline_defaults {
+        if std::env::var(key).is_err() {
+            envs.push((key.to_string(), val.to_string()));
+        }
+    }
     envs.extend(
         extra_env
             .iter()
