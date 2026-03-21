@@ -20,6 +20,11 @@ on:
         required: false
         type: boolean
         default: true
+      create_release:
+        description: Create a GitHub Release and upload built artifacts
+        required: false
+        type: boolean
+        default: false
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.channel }}
 
@@ -34,6 +39,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Compute version
         id: version
@@ -41,6 +47,7 @@ jobs:
         run: |
           echo "channel=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
           echo "version=0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "tag=v0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
 
   build-cli:
     needs: version
@@ -136,3 +143,37 @@ jobs:
         with:
           name: opencode-electron-${{ matrix.settings.target }}
           path: packages/desktop-electron/dist/*
+
+  release:
+    if: inputs.create_release
+    needs:
+      - version
+      - build-cli
+      - build-electron
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: opencode-*
+          path: dist
+          merge-multiple: false
+
+      - name: Flatten artifacts
+        shell: bash
+        run: |
+          mkdir -p release
+          find dist -type f -maxdepth 3 -exec cp {} release/ \;
+          ls -lah release
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: OpenCode Offline ${{ needs.version.outputs.version }}
+          draft: false
+          prerelease: ${{ needs.version.outputs.channel != 'prod' }}
+          generate_release_notes: true
+          files: release/*
