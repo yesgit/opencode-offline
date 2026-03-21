@@ -1,6 +1,6 @@
 import { execFileSync, spawn } from "node:child_process"
 import { EventEmitter } from "node:events"
-import { chmodSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import readline from "node:readline"
@@ -42,11 +42,28 @@ const root = dirname(fileURLToPath(import.meta.url))
 
 export function getSidecarPath() {
   const suffix = process.platform === "win32" ? ".exe" : ""
-  const path = app.isPackaged
+  const source = app.isPackaged
     ? join(process.resourcesPath, `opencode-cli${suffix}`)
     : join(root, "../../resources", `opencode-cli${suffix}`)
+  const path = process.platform === "win32" && app.isPackaged ? stage(source) : source
   console.log(`[cli] Sidecar path resolved: ${path} (isPackaged: ${app.isPackaged})`)
   return path
+}
+
+function stage(source: string) {
+  try {
+    const dir = join(tmpdir(), "opencode-sidecar")
+    mkdirSync(dir, { recursive: true })
+    const path = join(dir, "opencode-cli.exe")
+    const src = statSync(source)
+    const dst = existsSync(path) ? statSync(path) : undefined
+    if (!dst || src.size !== dst.size || src.mtimeMs > dst.mtimeMs) {
+      copyFileSync(source, path)
+    }
+    return path
+  } catch {
+    return source
+  }
 }
 
 export async function getConfig(): Promise<Config | null> {
