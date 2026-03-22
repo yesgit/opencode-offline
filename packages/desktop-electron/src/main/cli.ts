@@ -1,7 +1,6 @@
 import { execFileSync, spawn } from "node:child_process"
 import { EventEmitter } from "node:events"
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { chmodSync, existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import readline from "node:readline"
 import { fileURLToPath } from "node:url"
@@ -42,61 +41,11 @@ const root = dirname(fileURLToPath(import.meta.url))
 
 export function getSidecarPath() {
   const suffix = process.platform === "win32" ? ".exe" : ""
-  const source = app.isPackaged
+  const path = app.isPackaged
     ? join(process.resourcesPath, `opencode-cli${suffix}`)
     : join(root, "../../resources", `opencode-cli${suffix}`)
-  const path = process.platform === "win32" && app.isPackaged ? stage(source) : source
-  console.log(`[cli] Sidecar path resolved: ${path} (isPackaged: ${app.isPackaged}, source: ${source})`)
+  console.log(`[cli] Sidecar path resolved: ${path} (isPackaged: ${app.isPackaged})`)
   return path
-}
-
-function stage(source: string) {
-  try {
-    if (!existsSync(source)) {
-      console.error(`[cli] Source sidecar not found: ${source}`)
-      return source
-    }
-
-    const src = statSync(source)
-    if (!src.isFile()) {
-      console.error(`[cli] Source sidecar is not a file: ${source}`)
-      return source
-    }
-
-    const dir = join(tmpdir(), "opencode-sidecar")
-    mkdirSync(dir, { recursive: true })
-    const path = join(dir, "opencode-cli.exe")
-
-    const dst = existsSync(path) ? lstatSync(path) : undefined
-    const needsCopy = !dst || src.size !== dst.size || src.mtimeMs > dst.mtimeMs
-
-    if (needsCopy) {
-      console.log(`[cli] Staging sidecar: ${source} -> ${path}`)
-      copyFileSync(source, path)
-      try {
-        // Ensure file is executable on all platforms
-        chmodSync(path, 0o755)
-      } catch (e) {
-        console.warn(`[cli] Failed to chmod sidecar: ${e instanceof Error ? e.message : String(e)}`)
-      }
-    } else {
-      console.log(`[cli] Sidecar already staged: ${path}`)
-    }
-
-    // Verify staged file is accessible
-    try {
-      const verify = statSync(path)
-      console.log(`[cli] Staged sidecar verified: ${path} (size=${verify.size})`)
-    } catch (e) {
-      console.error(`[cli] Failed to verify staged sidecar: ${e instanceof Error ? e.message : String(e)}`)
-      return source
-    }
-
-    return path
-  } catch (e) {
-    console.error(`[cli] Staging failed, falling back to source: ${e instanceof Error ? e.message : String(e)}`)
-    return source
-  }
 }
 
 export async function getConfig(): Promise<Config | null> {
