@@ -47,13 +47,23 @@ jobs:
       channel: ${{ steps.version.outputs.channel }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Compute version
         id: version
         shell: bash
         run: |
+          # Get the latest git tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.2.27")
+          # Remove 'v' prefix
+          VERSION=${LATEST_TAG#v}
+
           echo "channel=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
-          echo "version=0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
-          echo "tag=v0.0.0-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}-${{ inputs.channel }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "Using base version: ${VERSION}"
 
   build-cli:
     needs: version
