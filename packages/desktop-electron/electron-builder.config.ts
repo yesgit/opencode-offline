@@ -56,6 +56,13 @@ const getBase = (): Configuration => ({
   win: {
     icon: `resources/icons/icon.ico`,
     target: ["nsis"],
+    // Disable GPU to prevent crashes on certain systems
+    protocols: [
+      {
+        name: "OpenCode",
+        schemes: ["opencode"],
+      },
+    ],
   },
   nsis: {
     oneClick: false,
