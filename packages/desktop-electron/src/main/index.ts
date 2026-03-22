@@ -294,7 +294,7 @@ function setupAutoUpdater() {
   autoUpdater.allowPrerelease = false
   autoUpdater.allowDowngrade = true
   autoUpdater.autoDownload = false
-  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.autoInstallOnAppQuit = false // Disable to prevent blocking app exit during installation
   logger.log("auto updater configured", {
     channel: autoUpdater.channel,
     allowPrerelease: autoUpdater.allowPrerelease,
