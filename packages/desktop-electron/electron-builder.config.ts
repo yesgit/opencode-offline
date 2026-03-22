@@ -49,13 +49,15 @@ const getBase = (): Configuration => ({
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
-    perMachine: true, // Allow installation for all users
+    perMachine: false, // Install per-user to avoid requiring admin rights
+    allowElevation: false, // Don't request elevation
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     installerIcon: `resources/icons/icon.ico`,
     installerHeaderIcon: `resources/icons/icon.ico`,
     deleteAppDataOnUninstall: false, // Preserve user data on uninstall
     runAfterFinish: false, // Don't auto-launch app after installation
+    packElevateHelper: false, // Don't include elevation helper
   },
   linux: {
     icon: `resources/icons`,
