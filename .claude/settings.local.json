@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(git fetch:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(iconv:*)",
+      "Bash(git tag:*)",
+      "Bash(git describe:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh repo set-default:*)",
+      "Bash(gh run:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git branch:*)"
+    ]
+  }
+}
