@@ -6,8 +6,18 @@ const channel = (() => {
   return "dev"
 })()
 
+const brand = (() => {
+  const raw = process.env.OPENCODE_BRAND_SUFFIX?.trim()
+  return raw ? ` ${raw}` : ""
+})()
+
+const prefix = (() => {
+  const raw = process.env.OPENCODE_ARTIFACT_PREFIX?.trim()
+  return raw || "opencode-electron"
+})()
+
 const getBase = (): Configuration => ({
-  artifactName: "opencode-electron-${os}-${arch}.${ext}",
+  artifactName: `${prefix}-\${os}-\${arch}.\${ext}`,
   directories: {
     output: "dist",
     buildResources: "resources",
@@ -25,6 +35,7 @@ const getBase = (): Configuration => ({
       filter: ["index.js", "index.d.ts", "build/Release/mac_window.node", "swift-build/**"],
     },
   ],
+  publish: null, // Disable update metadata files (.yml, .json, .blockmap)
   mac: {
     category: "public.app-category.developer-tools",
     icon: `resources/icons/icon.icns`,
@@ -74,7 +85,7 @@ function getConfig() {
       return {
         ...base,
         appId: "ai.opencode.desktop.dev",
-        productName: "OpenCode Dev",
+        productName: `OpenCode Dev${brand}`,
         rpm: { packageName: "opencode-dev" },
       }
     }
@@ -92,7 +103,7 @@ function getConfig() {
       return {
         ...base,
         appId: "ai.opencode.desktop",
-        productName: "OpenCode",
+        productName: `OpenCode${brand}`,
         protocols: { name: "OpenCode", schemes: ["opencode"] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
         rpm: { packageName: "opencode" },
