@@ -107,13 +107,24 @@ function setupApp() {
 function emitDeepLinks(urls: string[]) {
   if (urls.length === 0) return
   pendingDeepLinks.push(...urls)
-  if (mainWindow) sendDeepLinks(mainWindow, urls)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      sendDeepLinks(mainWindow, urls)
+    } catch (error) {
+      logger.error("failed to send deep links", error)
+    }
+  }
 }
 
 function focusMainWindow() {
   if (!mainWindow) return
-  mainWindow.show()
-  mainWindow.focus()
+  if (mainWindow.isDestroyed()) return
+  try {
+    mainWindow.show()
+    mainWindow.focus()
+  } catch (error) {
+    logger.error("failed to focus main window", error)
+  }
 }
 
 function setInitStep(step: InitStep) {
