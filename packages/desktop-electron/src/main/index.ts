@@ -8,6 +8,11 @@ import type { Event } from "electron"
 import { app, BrowserWindow, dialog } from "electron"
 import pkg from "electron-updater"
 
+// Disable GPU to prevent crashes (error_code=18)
+// Must be set before any other app operations
+app.commandLine.appendSwitch("disable-gpu")
+app.commandLine.appendSwitch("disable-software-rasterizer")
+
 const APP_NAMES: Record<string, string> = {
   dev: "OpenCode Dev",
   beta: "OpenCode Beta",
