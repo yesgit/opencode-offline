@@ -8,10 +8,10 @@ import type { Event } from "electron"
 import { app, BrowserWindow, dialog } from "electron"
 import pkg from "electron-updater"
 
-// Disable GPU to prevent crashes (error_code=18)
+// GPU fallback configuration - allow GPU with graceful software rendering fallback
 // Must be set before any other app operations
-app.commandLine.appendSwitch("disable-gpu")
-app.commandLine.appendSwitch("disable-software-rasterizer")
+app.commandLine.appendSwitch("ignore-gpu-blocklist")
+app.commandLine.appendSwitch("enable-features=ZeroCopyVideoCapture")
 
 const APP_NAMES: Record<string, string> = {
   dev: "OpenCode Dev",
@@ -61,10 +61,6 @@ setupApp()
 function setupApp() {
   ensureLoopbackNoProxy()
   app.commandLine.appendSwitch("proxy-bypass-list", "<-loopback>")
-
-  // Disable GPU to prevent crashes (error_code=18)
-  app.commandLine.appendSwitch("disable-gpu")
-  app.commandLine.appendSwitch("disable-software-rasterizer")
 
   if (!app.requestSingleInstanceLock()) {
     app.quit()
