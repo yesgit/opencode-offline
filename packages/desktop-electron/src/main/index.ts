@@ -81,6 +81,16 @@ function setupApp() {
     killSidecar()
   })
 
+  // Also handle window-all-closed to ensure cleanup on Windows
+  app.on("window-all-closed", () => {
+    // On Windows, we don't quit when all windows are closed
+    // But we should ensure sidecar is killed if app is shutting down
+    if (process.platform === "win32") {
+      // Don't quit automatically on Windows, but ensure sidecar is killed
+      killSidecar()
+    }
+  })
+
   void app.whenReady().then(async () => {
     // migrate()
     app.setAsDefaultProtocolClient("opencode")
@@ -234,7 +244,12 @@ registerIpcHandlers({
 
 function killSidecar() {
   if (!sidecar) return
-  sidecar.kill()
+  try {
+    sidecar.kill()
+    logger.log("sidecar killed", { pid: sidecar.child?.pid })
+  } catch (e) {
+    logger.error("failed to kill sidecar", e)
+  }
   sidecar = null
 }
 
