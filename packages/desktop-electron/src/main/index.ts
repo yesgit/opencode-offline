@@ -88,11 +88,9 @@ function setupApp() {
 
   // Also handle window-all-closed to ensure cleanup on Windows
   app.on("window-all-closed", () => {
-    // On Windows, we don't quit when all windows are closed
-    // But we should ensure sidecar is killed if app is shutting down
-    if (process.platform === "win32") {
-      // Don't quit automatically on Windows, but ensure sidecar is killed
-      killSidecar()
+    // On Windows and Linux, quit when all windows are closed to avoid background processes
+    if (process.platform === "win32" || process.platform === "linux") {
+      app.quit()
     }
   })
 
