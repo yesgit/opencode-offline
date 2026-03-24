@@ -17,7 +17,7 @@ const prefix = (() => {
 })()
 
 const getBase = (): Configuration => ({
-  artifactName: `${prefix}-\${os}-\${arch}.\${ext}`,
+  artifactName: `${prefix}-\${version}-\${os}-\${arch}.\${ext}`,
   directories: {
     output: "dist",
     buildResources: "resources",
