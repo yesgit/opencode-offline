@@ -260,7 +260,7 @@ function killSidecar() {
   if (!sidecar) return
   try {
     sidecar.kill()
-    logger.log("sidecar killed", { pid: sidecar.child?.pid })
+    logger.log("sidecar killed")
   } catch (e) {
     logger.error("failed to kill sidecar", e)
   }
